@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音樂生日星 | Melodic Soulmate</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- PapaParse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #0f172a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        .font-serif {
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* 背景動畫 */
+        .aurora-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #000000 100%);
+            overflow: hidden;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .orb-1 { width: 400px; height: 400px; background: #4f46e5; top: -10%; left: -10%; animation-delay: 0s; }
+        .orb-2 { width: 500px; height: 500px; background: #db2777; bottom: -10%; right: -10%; animation-delay: -5s; }
+        .orb-3 { width: 300px; height: 300px; background: #0891b2; top: 40%; left: 60%; animation-delay: -10s; }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30px, 50px); }
+        }
+        
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Custom Select Styling */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.7rem top 50%;
+            background-size: 0.65rem auto;
+        }
+        
+        select:focus {
+            outline: none;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        select option {
+            background-color: #1e1b4b;
+            color: white;
+        }
+
+        /* Result Card Animation */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-up {
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Text Gradient */
+        .text-gradient {
+            background: linear-gradient(to right, #e0e7ff, #a5b4fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Icons (Minimalist) ---
+        const IconBase = ({ children, className, ...props }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
+        );
+        const Search = (props) => <IconBase {...props}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></IconBase>;
+        const ArrowRight = (props) => <IconBase {...props}><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></IconBase>;
+        const MusicNote = (props) => <IconBase {...props}><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></IconBase>;
+        const Sparkles = (props) => <IconBase {...props}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path></IconBase>;
+
+        // --- Constants ---
+        const FIXED_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRI4bfz4oW4L_JVdTQ1m8AVlXUp8AgavrNrZvvoDfL3fUSUFAaJr8-QpQ9ivxgs_b1a1M1CLMgnbvnv/pub?output=csv";
+
+        const App = () => {
+            // 改用 Month 和 Day 兩個 State
+            const [selectedMonth, setSelectedMonth] = useState("");
+            const [selectedDay, setSelectedDay] = useState("");
+            
+            const [result, setResult] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [cachedData, setCachedData] = useState([]);
+
+            // 生成月份與日期選項
+            const months = Array.from({length: 12}, (_, i) => i + 1);
+            const days = Array.from({length: 31}, (_, i) => i + 1);
+
+            useEffect(() => {
+                const loadData = async () => {
+                    try {
+                        const data = await fetchSheetData();
+                        setCachedData(data);
+                        console.log("資料庫預載完成", data.length, "筆");
+                    } catch (err) {
+                        console.error("預載失敗:", err);
+                    }
+                };
+                loadData();
+            }, []);
+
+            const handleSearch = async () => {
+                if (!selectedMonth || !selectedDay) return;
+                
+                setLoading(true);
+                setError(null);
+                setResult(null);
+
+                try {
+                    let sourceData = cachedData;
+
+                    if (!sourceData || sourceData.length === 0) {
+                        sourceData = await fetchSheetData();
+                        setCachedData(sourceData);
+                    }
+
+                    if (!sourceData || sourceData.length === 0) {
+                        throw new Error("無法連接至資料庫，請稍後再試。");
+                    }
+
+                    // 直接使用選擇的月日進行比對
+                    const searchMonth = parseInt(selectedMonth);
+                    const searchDay = parseInt(selectedDay);
+
+                    const matches = sourceData.filter(singer => {
+                        const [y, m, d] = singer.birthDate.split('-').map(Number);
+                        return m === searchMonth && d === searchDay;
+                    });
+
+                    setTimeout(() => {
+                        if (matches.length > 0) {
+                            // 隨機選一個
+                            const selectedSinger = matches[Math.floor(Math.random() * matches.length)];
+                            setResult(selectedSinger);
+                        } else {
+                            setError("這一天似乎還沒有收錄到知名歌手的資料。");
+                            // 隨機推薦
+                            const randomSinger = sourceData[Math.floor(Math.random() * sourceData.length)];
+                            setResult({
+                                ...randomSinger,
+                                isRecommendation: true
+                            });
+                        }
+                        setLoading(false);
+                    }, 600);
+
+                } catch (err) {
+                    console.error(err);
+                    setError(err.message);
+                    setLoading(false);
+                }
+            };
+
+            const fetchSheetData = () => {
+                return new Promise((resolve, reject) => {
+                    Papa.parse(FIXED_CSV_URL, {
+                        download: true,
+                        header: false, 
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                            const rawData = results.data;
+                            if (rawData && rawData.length > 0) {
+                                if (rawData[0][0] && typeof rawData[0][0] === 'string' && rawData[0][0].trim().startsWith("<!DOCTYPE")) {
+                                     reject(new Error("連結無效或權限不足"));
+                                     return;
+                                }
+
+                                const validData = rawData.map(row => {
+                                    if (row.length < 2) return null; 
+                                    const dateStr = row[0];
+                                    if (!dateStr) return null;
+
+                                    let month, day;
+                                    const chineseMatch = typeof dateStr === 'string' ? dateStr.match(/(\d+)\s*月\s*(\d+)/) : null;
+                                    
+                                    if (chineseMatch) {
+                                        month = chineseMatch[1];
+                                        day = chineseMatch[2];
+                                    } else {
+                                        const d = new Date(dateStr);
+                                        if (!isNaN(d.getTime())) {
+                                            month = d.getMonth() + 1;
+                                            day = d.getDate();
+                                        } else {
+                                            const simpleMatch = typeof dateStr === 'string' ? dateStr.match(/(\d+)[\/\-](\d+)/) : null;
+                                            if (simpleMatch) {
+                                                month = simpleMatch[1];
+                                                day = simpleMatch[2];
+                                            } else return null;
+                                        }
+                                    }
+
+                                    month = month.toString().padStart(2, '0');
+                                    day = day.toString().padStart(2, '0');
+
+                                    let year = '2000'; 
+                                    if (row[3]) {
+                                        const y = parseInt(row[3]);
+                                        if (!isNaN(y)) year = y.toString();
+                                    }
+
+                                    return {
+                                        name: row[1],
+                                        birthDate: `${year}-${month}-${day}`,
+                                        displayDate: `${year} / ${month} / ${day}`,
+                                        bio: row[4] ? `${row[4]} (${row[2] || ''})` : `來自${row[2] || '未知地區'}的藝人`,
+                                        spotifyUrl: (row[6] && row[6].startsWith('http')) ? row[6] : null,
+                                        appleUrl: (row[7] && row[7].startsWith('http')) ? row[7] : null
+                                    };
+                                }).filter(item => item !== null);
+                                resolve(validData);
+                            } else {
+                                reject(new Error("無資料"));
+                            }
+                        },
+                        error: (err) => reject(err)
+                    });
+                });
+            };
+
+            const getSpotifyLink = (singer) => singer.spotifyUrl || `https://open.spotify.com/search/${encodeURIComponent(singer.name)}`;
+            const getAppleLink = (singer) => singer.appleUrl || `https://music.apple.com/tw/search?term=${encodeURIComponent(singer.name)}`;
+
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
+                    {/* 背景特效 */}
+                    <div className="aurora-bg">
+                        <div className="orb orb-1"></div>
+                        <div className="orb orb-2"></div>
+                        <div className="orb orb-3"></div>
+                    </div>
+
+                    {/* 主容器 */}
+                    <div className="w-full max-w-xl relative z-10">
+                        
+                        {!result && (
+                            <div className="text-center mb-12 animate-slide-up">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 border border-white/10 mb-6 backdrop-blur-md">
+                                    <MusicNote className="w-8 h-8 text-indigo-400" />
+                                </div>
+                                <h1 className="text-5xl md:text-6xl font-bold mb-4 font-serif tracking-tight text-white">
+                                    Melodic <span className="text-indigo-400">Soulmate</span>
+                                </h1>
+                                <p className="text-gray-400 text-lg tracking-wide font-light">
+                                    尋找與你同天誕生的靈魂聲音
+                                </p>
+                            </div>
+                        )}
+
+                        {/* 搜尋卡片：輸入介面更新 */}
+                        <div className={`glass-card rounded-2xl p-2 mb-8 transition-all duration-500 ${result ? 'opacity-90 scale-95' : 'p-4'}`}>
+                            <div className="flex items-center gap-3">
+                                <div className="pl-3 text-gray-400 hidden sm:block">
+                                    <span className="text-xs uppercase tracking-widest font-bold">Birthday</span>
+                                </div>
+                                
+                                {/* Month Select */}
+                                <div className="flex-1 relative">
+                                    <select 
+                                        value={selectedMonth}
+                                        onChange={(e) => setSelectedMonth(e.target.value)}
+                                        className="w-full bg-transparent border-none text-white text-lg p-3 pr-8 cursor-pointer font-mono appearance-none focus:bg-white/10 rounded-lg transition-colors"
+                                    >
+                                        <option value="" disabled>Month</option>
+                                        {months.map(m => (
+                                            <option key={m} value={m}>{m} 月</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <span className="text-gray-500">/</span>
+
+                                {/* Day Select */}
+                                <div className="flex-1 relative">
+                                    <select 
+                                        value={selectedDay}
+                                        onChange={(e) => setSelectedDay(e.target.value)}
+                                        className="w-full bg-transparent border-none text-white text-lg p-3 pr-8 cursor-pointer font-mono appearance-none focus:bg-white/10 rounded-lg transition-colors"
+                                    >
+                                        <option value="" disabled>Day</option>
+                                        {days.map(d => (
+                                            <option key={d} value={d}>{d} 日</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <button 
+                                    onClick={handleSearch}
+                                    disabled={loading || !selectedMonth || !selectedDay}
+                                    className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-6 py-3 flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-900/50"
+                                >
+                                    {loading ? (
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    ) : (
+                                        <ArrowRight className="w-5 h-5" />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="animate-slide-up bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl mb-6 text-center backdrop-blur-sm">
+                                {error}
+                            </div>
+                        )}
+
+                        {/* 結果卡片 */}
+                        {result && (
+                            <div className="glass-card rounded-3xl p-8 md:p-12 text-center relative overflow-hidden animate-slide-up border border-white/10">
+                                <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+                                    <div className="absolute top-[-50px] left-[-50px] text-[200px] font-bold opacity-[0.03] font-serif select-none text-white rotate-[-10deg]">
+                                        MUSIC
+                                    </div>
+                                </div>
+
+                                <div className="relative z-10 flex flex-col items-center">
+                                    <div className="mb-6">
+                                        {result.isExactYear ? (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-yellow-400/20 text-yellow-300 text-xs font-bold tracking-wider border border-yellow-400/30">
+                                                <Sparkles className="w-3 h-3 mr-1" /> PERFECT MATCH
+                                            </span>
+                                        ) : result.isRecommendation ? (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-400/20 text-blue-300 text-xs font-bold tracking-wider border border-blue-400/30">
+                                                RECOMMENDATION
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-400/20 text-indigo-300 text-xs font-bold tracking-wider border border-indigo-400/30">
+                                                YOUR ARTIST
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <h2 className="text-5xl md:text-7xl font-black mb-4 tracking-tight leading-tight font-serif text-gradient drop-shadow-lg">
+                                        {result.name}
+                                    </h2>
+
+                                    <div className="text-xl md:text-2xl text-gray-300 font-light tracking-[0.2em] mb-8 font-mono opacity-80">
+                                        {result.displayDate}
+                                    </div>
+
+                                    <div className="w-12 h-1 bg-indigo-500 rounded-full mb-8 opacity-50"></div>
+
+                                    <p className="text-gray-300 leading-relaxed max-w-md mx-auto mb-10 text-sm md:text-base font-light">
+                                        {result.bio}
+                                    </p>
+
+                                    <div className="w-full grid grid-cols-1 gap-3 max-w-xs mx-auto">
+                                        <a 
+                                            href={getSpotifyLink(result)} 
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="group flex items-center justify-between w-full bg-[#1DB954]/90 hover:bg-[#1DB954] text-white p-4 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-green-900/20"
+                                        >
+                                            <span className="font-bold tracking-wide">Spotify</span>
+                                            <ArrowRight className="w-5 h-5 opacity-70 group-hover:translate-x-1 transition-transform" />
+                                        </a>
+
+                                        <a 
+                                            href={getAppleLink(result)} 
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="group flex items-center justify-between w-full bg-[#FA243C]/90 hover:bg-[#FA243C] text-white p-4 rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-red-900/20"
+                                        >
+                                            <span className="font-bold tracking-wide">Apple Music</span>
+                                            <ArrowRight className="w-5 h-5 opacity-70 group-hover:translate-x-1 transition-transform" />
+                                        </a>
+
+                                        <a 
+                                            href={`https://www.google.com/search?q=${encodeURIComponent(result.name + " 歌手")}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="group flex items-center justify-center w-full bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white py-3 rounded-xl transition-all border border-white/10 text-sm mt-2"
+                                        >
+                                            <Search className="w-4 h-4 mr-2" />
+                                            Google 搜尋
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-12 text-center">
+                             <p className="text-white/20 text-xs tracking-widest">DESIGNED FOR MUSIC LOVERS</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
