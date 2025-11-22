@@ -1,7 +1,7 @@
 import React from 'react';
-import { Sparkles, ArrowRight, Search } from './Icons';
+import { Sparkles, ArrowRight, Search, ArrowLeft } from './Icons';
 
-const ResultCard = ({ result }) => {
+const ResultCard = ({ result, onBack }) => {
     if (!result) return null;
 
     const getSpotifyLink = (singer) => singer.spotifyUrl || `https://open.spotify.com/search/${encodeURIComponent(singer.name)}`;
@@ -9,6 +9,14 @@ const ResultCard = ({ result }) => {
 
     return (
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-8 md:p-12 text-center relative overflow-hidden animate-slide-up">
+            <button
+                onClick={onBack}
+                className="absolute top-6 left-6 p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition-all z-20"
+                aria-label="Go back"
+            >
+                <ArrowLeft className="w-6 h-6" />
+            </button>
+
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
                 <div className="absolute top-[-50px] left-[-50px] text-[200px] font-bold opacity-[0.03] font-serif select-none text-white rotate-[-10deg]">
                     MUSIC

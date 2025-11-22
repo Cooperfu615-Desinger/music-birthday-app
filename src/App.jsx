@@ -79,6 +79,12 @@ const App = () => {
     }
   };
 
+  const handleReset = () => {
+    setResult(null);
+    setSelectedMonth("");
+    setSelectedDay("");
+  };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
       <Background />
@@ -98,15 +104,17 @@ const App = () => {
           </div>
         )}
 
-        <SearchForm
-          selectedMonth={selectedMonth}
-          setSelectedMonth={setSelectedMonth}
-          selectedDay={selectedDay}
-          setSelectedDay={setSelectedDay}
-          handleSearch={handleSearch}
-          loading={loading}
-          result={result}
-        />
+        {!result && (
+          <SearchForm
+            selectedMonth={selectedMonth}
+            setSelectedMonth={setSelectedMonth}
+            selectedDay={selectedDay}
+            setSelectedDay={setSelectedDay}
+            handleSearch={handleSearch}
+            loading={loading}
+            result={result}
+          />
+        )}
 
         {error && (
           <div className="animate-slide-up bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl mb-6 text-center backdrop-blur-sm">
@@ -114,7 +122,7 @@ const App = () => {
           </div>
         )}
 
-        <ResultCard result={result} />
+        <ResultCard result={result} onBack={handleReset} />
 
         <div className="mt-12 text-center">
           <p className="text-white/20 text-xs tracking-widest">DESIGNED FOR MUSIC LOVERS</p>
