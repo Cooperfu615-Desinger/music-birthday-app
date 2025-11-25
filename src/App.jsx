@@ -125,7 +125,7 @@ const App = () => {
         <ResultCard result={result} onBack={handleReset} />
 
         <div className="mt-12 text-center">
-          <p className="text-white/20 text-xs tracking-widest">DESIGNED FOR MUSIC LOVERS</p>
+          <p className="text-white/20 text-xs tracking-widest">CREATED BY VIBE QUIRK LABS</p>
         </div>
       </div>
     </div>
