@@ -1,6 +1,78 @@
 import Papa from 'papaparse';
+import { getDaysInMonth } from './date.js';
 
 export const FIXED_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRI4bfz4oW4L_JVdTQ1m8AVlXUp8AgavrNrZvvoDfL3fUSUFAaJr8-QpQ9ivxgs_b1a1M1CLMgnbvnv/pub?output=csv";
+
+const padDatePart = (value) => value.toString().padStart(2, '0');
+
+const parseDateParts = (dateValue) => {
+    if (!dateValue) return null;
+
+    const dateStr = dateValue.toString().trim();
+    const chineseMatch = dateStr.match(/(\d+)\s*月\s*(\d+)/);
+
+    if (chineseMatch) {
+        return {
+            month: Number(chineseMatch[1]),
+            day: Number(chineseMatch[2]),
+        };
+    }
+
+    const simpleMatch = dateStr.match(/(\d+)[/-](\d+)/);
+
+    if (simpleMatch) {
+        return {
+            month: Number(simpleMatch[1]),
+            day: Number(simpleMatch[2]),
+        };
+    }
+
+    const parsedDate = new Date(dateStr);
+
+    if (!Number.isNaN(parsedDate.getTime())) {
+        return {
+            month: parsedDate.getMonth() + 1,
+            day: parsedDate.getDate(),
+        };
+    }
+
+    return null;
+};
+
+const isValidUrl = (value) => typeof value === 'string' && value.trim().startsWith('http');
+
+export const parseSingerRow = (row) => {
+    if (!Array.isArray(row) || row.length < 2) return null;
+
+    const dateParts = parseDateParts(row[0]);
+    const name = row[1]?.toString().trim();
+
+    if (!dateParts || !name) return null;
+    if (
+        dateParts.month < 1 ||
+        dateParts.month > 12 ||
+        dateParts.day < 1 ||
+        dateParts.day > getDaysInMonth(dateParts.month)
+    ) {
+        return null;
+    }
+
+    const month = padDatePart(dateParts.month);
+    const day = padDatePart(dateParts.day);
+    const parsedYear = Number.parseInt(row[3], 10);
+    const year = Number.isNaN(parsedYear) ? '2000' : parsedYear.toString();
+    const region = row[2]?.toString().trim() || '';
+    const description = row[4]?.toString().trim();
+
+    return {
+        name,
+        birthDate: `${year}-${month}-${day}`,
+        displayDate: `${year} / ${month} / ${day}`,
+        bio: description ? `${description} (${region})` : `來自${region || '未知地區'}的藝人`,
+        spotifyUrl: isValidUrl(row[6]) ? row[6].trim() : null,
+        appleUrl: isValidUrl(row[7]) ? row[7].trim() : null
+    };
+};
 
 export const fetchSheetData = () => {
     return new Promise((resolve, reject) => {
@@ -16,49 +88,7 @@ export const fetchSheetData = () => {
                         return;
                     }
 
-                    const validData = rawData.map(row => {
-                        if (row.length < 2) return null;
-                        const dateStr = row[0];
-                        if (!dateStr) return null;
-
-                        let month, day;
-                        const chineseMatch = typeof dateStr === 'string' ? dateStr.match(/(\d+)\s*月\s*(\d+)/) : null;
-
-                        if (chineseMatch) {
-                            month = chineseMatch[1];
-                            day = chineseMatch[2];
-                        } else {
-                            const d = new Date(dateStr);
-                            if (!isNaN(d.getTime())) {
-                                month = d.getMonth() + 1;
-                                day = d.getDate();
-                            } else {
-                                const simpleMatch = typeof dateStr === 'string' ? dateStr.match(/(\d+)[\/\-](\d+)/) : null;
-                                if (simpleMatch) {
-                                    month = simpleMatch[1];
-                                    day = simpleMatch[2];
-                                } else return null;
-                            }
-                        }
-
-                        month = month.toString().padStart(2, '0');
-                        day = day.toString().padStart(2, '0');
-
-                        let year = '2000';
-                        if (row[3]) {
-                            const y = parseInt(row[3]);
-                            if (!isNaN(y)) year = y.toString();
-                        }
-
-                        return {
-                            name: row[1],
-                            birthDate: `${year}-${month}-${day}`,
-                            displayDate: `${year} / ${month} / ${day}`,
-                            bio: row[4] ? `${row[4]} (${row[2] || ''})` : `來自${row[2] || '未知地區'}的藝人`,
-                            spotifyUrl: (row[6] && row[6].startsWith('http')) ? row[6] : null,
-                            appleUrl: (row[7] && row[7].startsWith('http')) ? row[7] : null
-                        };
-                    }).filter(item => item !== null);
+                    const validData = rawData.map(parseSingerRow).filter(Boolean);
                     resolve(validData);
                 } else {
                     reject(new Error("無資料"));

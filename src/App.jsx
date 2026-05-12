@@ -19,7 +19,6 @@ const App = () => {
       try {
         const data = await fetchSheetData();
         setCachedData(data);
-        console.log("資料庫預載完成", data.length, "筆");
       } catch (err) {
         console.error("預載失敗:", err);
       }
@@ -51,22 +50,20 @@ const App = () => {
       const searchDay = parseInt(selectedDay);
 
       const matches = sourceData.filter(singer => {
-        const [y, m, d] = singer.birthDate.split('-').map(Number);
+        const [, m, d] = singer.birthDate.split('-').map(Number);
         return m === searchMonth && d === searchDay;
       });
 
       setTimeout(() => {
         if (matches.length > 0) {
-          // 隨機選一個
           const selectedSinger = matches[Math.floor(Math.random() * matches.length)];
           setResult(selectedSinger);
         } else {
-          setError("這一天似乎還沒有收錄到知名歌手的資料。");
-          // 隨機推薦
           const randomSinger = sourceData[Math.floor(Math.random() * sourceData.length)];
           setResult({
             ...randomSinger,
-            isRecommendation: true
+            isRecommendation: true,
+            recommendationReason: "這一天尚未收錄完全吻合的歌手，先為你推薦另一位靈魂聲音。"
           });
         }
         setLoading(false);
@@ -86,19 +83,19 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
+    <div className="app-shell">
       <Background />
 
-      <div className="w-full max-w-xl relative z-10">
+      <div className="app-container">
         {!result && (
-          <div className="text-center mb-12 animate-slide-up">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 border border-white/10 mb-6 backdrop-blur-md">
-              <MusicNote className="w-8 h-8 text-indigo-400" />
+          <div className="hero animate-slide-up">
+            <div className="hero-icon-shell">
+              <MusicNote className="hero-icon" />
             </div>
-            <h1 className="text-5xl md:text-6xl font-bold mb-4 font-serif tracking-tight text-white">
-              Melodic <span className="text-indigo-400">Soulmate</span>
+            <h1 className="hero-title">
+              Melodic <span>Soulmate</span>
             </h1>
-            <p className="text-gray-400 text-lg tracking-wide font-light">
+            <p className="hero-subtitle">
               尋找與你同天誕生的靈魂聲音
             </p>
           </div>
@@ -117,15 +114,15 @@ const App = () => {
         )}
 
         {error && (
-          <div className="animate-slide-up bg-red-500/10 border border-red-500/20 text-red-200 p-4 rounded-xl mb-6 text-center backdrop-blur-sm">
+          <div className="error-message animate-slide-up">
             {error}
           </div>
         )}
 
         <ResultCard result={result} onBack={handleReset} />
 
-        <div className="mt-12 text-center">
-          <p className="text-white/20 text-xs tracking-widest">CREATED BY VIBE QUIRK LABS</p>
+        <div className="footer-credit">
+          <p>CREATED BY VIBE QUIRK LABS</p>
         </div>
       </div>
     </div>

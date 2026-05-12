@@ -1,23 +1,33 @@
 import React from 'react';
 import { ArrowRight } from './Icons';
+import { getDaysInMonth } from '../utils/date.js';
 
 const SearchForm = ({ selectedMonth, setSelectedMonth, selectedDay, setSelectedDay, handleSearch, loading, result }) => {
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
-    const days = Array.from({ length: 31 }, (_, i) => i + 1);
+    const days = Array.from({ length: getDaysInMonth(selectedMonth) }, (_, i) => i + 1);
+
+    const handleMonthChange = (event) => {
+        const month = event.target.value;
+        const maxDay = getDaysInMonth(month);
+
+        setSelectedMonth(month);
+
+        if (Number(selectedDay) > maxDay) {
+            setSelectedDay("");
+        }
+    };
 
     return (
-        <div className={`bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-2 mb-8 transition-all duration-500 ${result ? 'opacity-90 scale-95' : 'p-4'}`}>
-            <div className="flex items-center gap-3">
-                <div className="pl-3 text-gray-400 hidden sm:block">
-                    <span className="text-xs uppercase tracking-widest font-bold">Birthday</span>
+        <div className={`search-card ${result ? 'is-condensed' : ''}`}>
+            <div className="search-row">
+                <div className="search-label">
+                    <span>Birthday</span>
                 </div>
 
-                {/* Month Select */}
-                <div className="flex-1 relative">
+                <div className="select-field">
                     <select
                         value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="w-full bg-transparent border-none text-white text-lg p-3 pr-8 cursor-pointer font-mono appearance-none focus:bg-white/10 rounded-lg transition-colors"
+                        onChange={handleMonthChange}
                     >
                         <option value="" disabled>Month</option>
                         {months.map(m => (
@@ -26,14 +36,12 @@ const SearchForm = ({ selectedMonth, setSelectedMonth, selectedDay, setSelectedD
                     </select>
                 </div>
 
-                <span className="text-gray-500">/</span>
+                <span className="date-separator">/</span>
 
-                {/* Day Select */}
-                <div className="flex-1 relative">
+                <div className="select-field">
                     <select
                         value={selectedDay}
                         onChange={(e) => setSelectedDay(e.target.value)}
-                        className="w-full bg-transparent border-none text-white text-lg p-3 pr-8 cursor-pointer font-mono appearance-none focus:bg-white/10 rounded-lg transition-colors"
                     >
                         <option value="" disabled>Day</option>
                         {days.map(d => (
@@ -45,12 +53,13 @@ const SearchForm = ({ selectedMonth, setSelectedMonth, selectedDay, setSelectedD
                 <button
                     onClick={handleSearch}
                     disabled={loading || !selectedMonth || !selectedDay}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-6 py-3 flex items-center transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-900/50"
+                    className="search-button"
+                    aria-label="搜尋同生日歌手"
                 >
                     {loading ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <div className="spinner"></div>
                     ) : (
-                        <ArrowRight className="w-5 h-5" />
+                        <ArrowRight className="button-icon" />
                     )}
                 </button>
             </div>
